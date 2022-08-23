@@ -7,6 +7,9 @@ Parameters:
   DefaultVpcId:
     Type: String
     Description: 'ID of default VPC'
+  KeyPairName:
+    Type: String
+    Description: 'EC2 instance SSH key pair name'
 Resources:
   DevInstanceSecurityGrp:
     Type: 'AWS::EC2::SecurityGroup'
@@ -35,7 +38,7 @@ Resources:
   DevInstanceKeyPair:
     Type: 'AWS::EC2::KeyPair'
     Properties:
-      KeyName: 'dev-instance-ssh-key'
+      KeyName: !Ref KeyPairName
       KeyType: 'ed25519'
   DevInstance:
     Type: 'AWS::EC2::Instance'
@@ -63,4 +66,3 @@ Outputs:
   PublicIPAddress:
     Description: 'The public IP address of the deployed instance'
     Value: !GetAtt DevInstance.PublicIp
-
