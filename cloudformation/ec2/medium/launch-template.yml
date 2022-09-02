@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Deploys an Amazon Linux instance with SSM remote access privileges'
+
+#         Parameters
+# ------------------------------
+Parameters:
+  pCidr:
+    Type: String
+    Description: 'the CIDR range of the VPC'
+    Default: '10.0.0.0/24'
+  pAmiId:
+    Type: 'AWS::EC2::Image::Id'
+    Description: 'The AMI ID to use'
+    Default: 'ami-090fa75af13c156b4'
+  pAmiType:
+    Type: String
+    Description: 'The AMI instance type to use'
+    Default: 't2.micro'
+
+#         Resources
+# ------------------------------
+Resources:
+  rVpc:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref pCidr
+      EnableDnsSupport: True
+      EnableDnsHostnames: True
+  rPrivateSubnet:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      CidrBlock: !Ref pCidr
+      MapPublicIpOnLaunch: False
+      VpcId: !Ref rVpc
+  rPrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref rVpc
+  rSsmVpcEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      VpcId: !Ref rVpc
+      SubnetIds:
+        - !Ref rPrivateSubnet
+      SecurityGroupIds:
+        - !Ref rVpcEndpointsSg
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+  rSsmMessagesVpcEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      VpcId: !Ref rVpc
+      SubnetIds:
+        - !Ref rPrivateSubnet
+      SecurityGroupIds:
+        - !Ref rVpcEndpointsSg
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+  rEc2MessagesVpcEndpoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Properties:
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      VpcId: !Ref rVpc
+      SubnetIds:
+        - !Ref rPrivateSubnet
+      SecurityGroupIds:
+        - !Ref rVpcEndpointsSg
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: True
+  rEc2SsmRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        # allow EC2 to assume role
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        # attaching a managed policy to our role
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+  rDevInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+        - !Ref rEc2SsmRole
+  rDevInstanceSg:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'security group for dev instance'
+      VpcId: !Ref rVpc
+      SecurityGroupEgress:
+        - Description: 'allow outbound traffic to the VPC'
+          CidrIp: !Ref pCidr
+          FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+  rVpcEndpointsSg:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: 'security group for VPC endpoints'
+      VpcId: !Ref rVpc
+      SecurityGroupIngress:
+        - Description: 'allow inbound HTTPS from instance'
+          SourceSecurityGroupId: !Ref rDevInstanceSg
+          FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+      SecurityGroupEgress:
+        - Description: 'allow outbound HTTPS to the VPC'
+          CidrIp: !Ref pCidr
+          FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+  rDevInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref pAmiId
+      InstanceType: !Ref pAmiType
+      IamInstanceProfile: !Ref rDevInstanceProfile
+      SubnetId: !Ref rPrivateSubnet
+      SecurityGroupIds:
+        - !GetAtt rDevInstanceSg.GroupId
+      Tags:
+        - Key: 'Name'
+          Value: 'CloudFormationManagedInstance'
+
+#         Outputs
+# ------------------------------
+Outputs:
+  oPrivateIp:
+    Description: 'The private IP address of the instance we deployed'
+    Value: !GetAtt rDevInstance.PrivateIp
