@@ -12,7 +12,7 @@ def lambda_handler(event, context):
         "principalId": "user",
         "policyDocument": {
             "Version": "2012-10-17",
-            "Statements": [
+            "Statement": [
                 {
                     "Action": "execute-api:Invoke",
                     "Effect": effect,
