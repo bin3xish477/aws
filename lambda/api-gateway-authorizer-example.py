@@ -17,9 +17,10 @@ def lambda_handler(event, context):
             "Version": "2012-10-17",
             "Statements": [
                 {
-                    "Action": "",
+                    "Action": "execute-api:Invoke",
                     "Effect": effect,
-                    "Resource": "arn:aws:execute-api:us-east-1:089263644322:wjauokhh64/*/GET/blog"
+                    # don't forget to substitute the insert the accountId, apiId, and resource
+                    "Resource": "arn:aws:execute-api:us-east-1:{accountId}:{apiId}/*/GET/{resource}"
                 }
             ]
         }
