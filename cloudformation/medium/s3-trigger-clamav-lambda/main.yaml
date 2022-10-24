@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  'Deploys two S3 buckets: one for primary file storage and another bucket for quarentined files.
+    Also, creates an ECR repository where we will upload our ClamAV and Go based image which will
+    be used by the lambda function that also gets created by this template.'
+
+#         Parameters
+# ------------------------------
+Parameters:
+
+Resources:
+  StagingS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  QuarentineS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  ClamAVLambaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        # allow EC2 to assume role
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+            Policies:
+              - PolicyName: AllowLambdaToGetECRImage
+                PolicyDocument:
+                  Version: "2012-10-17"
+                  Statement:
+                    - Effect: Allow
+                      Action: '*'
+                      Resource: '*'
+              - PolicyName: AllowS3BucketAccessToStagedAndQuarentineBuckets 
+                PolicyDocument:
+                  Version: "2012-10-17"
+                  Statement:
+                    - Effect: Allow
+                      Action: '*'
+                      Resource: '*'
+
+
+  ClamAVLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: 'Lambda function to scan files from S3 bucket with ClamAV'
+      FunctionName: 'clamav-lambda'
+      Role: !Ref ClamAVLambaRole
+      PackageType: Image
+      Code:
+      ImageConfig:
+        Command: 
+          - 'app.handler'
+
+Outputs:
+
