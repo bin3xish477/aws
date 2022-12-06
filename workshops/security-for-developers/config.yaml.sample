@@ -1,0 +1,25 @@
+### Staging Auto-Deploy
+auto_deploy_staging: False
+initial_image: public.ecr.aws/adelagon/flask-app:latest
+
+### Static Application Security Testing (SAST) Step
+sast:
+  enabled: True
+  sonarqube:
+    image: public.ecr.aws/adelagon/sonarqube:lts-community
+    token: <PLACE_SONARQUBE_TOKEN_HERE>
+
+### Software Composition Analysis (SCA) Step
+sca:
+  enabled: True
+
+### License Checker Step
+license:
+  enabled: True
+
+### Dynamic Application Security Testing (DAST) Step
+dast:
+  enabled: True
+  zaproxy:
+    instance_type: t3.medium
+    api_key: SomeRandomString
