@@ -1,0 +1,60 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyTagsChangeOnIamRoleTeamTagKey",
+      "Action": "iam:TagRole",
+      "Resource": "*",
+      "Effect": "Deny",
+      "Condition": {
+        "ForAnyValue:StringEquals": {
+          "aws:TagKeys": [
+            "Team"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "S3DenyDeleteTagsIfAbacTagPresent",
+      "Action": "s3:DeleteObjectTagging",
+      "Resource": "*",
+      "Effect": "Deny",
+      "Condition": {
+        "Null": {
+          "s3:ExistingObjectTag/Team": "false"
+        }
+      }
+    },
+    {
+      "Sid": "5S3DenyModifyingTagsNotOnYourResource",
+      "Action": "s3:PutObjectTagging",
+      "Resource": "*",
+      "Effect": "Deny",
+      "Condition": {
+        "Null": {
+          "s3:ExistingObjectTag/Team": "false"
+        },
+        "StringNotEquals": {
+          "s3:ExistingObjectTag/Team": "${aws:PrincipalTag/Team}"
+        }
+      }
+    },
+    {
+      "Sid": "3S3DenyModifyingAbacTagOnYourResource",
+      "Action": "s3:PutObjectTagging",
+      "Resource": "*",
+      "Effect": "Deny",
+      "Condition": {
+        "StringEquals": {
+          "s3:ExistingObjectTag/Team": "${aws:PrincipalTag/Team}"
+        },
+        "Null": {
+          "s3:ExistingObjectTag/Team": "false"
+        },
+        "StringNotEquals": {
+          "s3:RequestObjectTag/Team": "${aws:PrincipalTag/Team}"
+        }
+      }
+    }
+  ]
+}
